@@ -1,0 +1,10 @@
+.env
+indexes/
+data/
+__pycache__/
+*.pyc
+.DS_Store
+venv/
+.cli_history
+*.faiss
+*.pkl
