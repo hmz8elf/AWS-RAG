@@ -1,7 +1,13 @@
-# RAG Core
+# Torch CPU avant tout
+torch==2.5.1+cpu
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# RAG Core — versions compatibles entre elles
 langchain==0.2.16
 langchain-community==0.2.16
 langchain-groq==0.1.9
+langchain-huggingface==0.0.3
+langchain-core==0.2.43
 faiss-cpu==1.9.0.post1
 sentence-transformers==3.0.0
 pypdf==4.2.0
