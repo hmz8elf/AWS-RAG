@@ -9,8 +9,6 @@ RUN pip install torch==2.5.1+cpu \
     --extra-index-url https://download.pytorch.org/whl/cpu \
     --no-cache-dir
 
-RUN pip install fastapi uvicorn --no-cache-dir
-
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 

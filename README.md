@@ -209,7 +209,7 @@ aws s3 sync indexes/ s3://<your-bucket>/indexes/
 - **Small evaluation set** (3 questions), with the biases listed above.
 - **Single-service routing**: only the first detected service is used; a question comparing two services in technical mode is searched in one index only.
 - **Limited scope**: five services (S3, EC2, Lambda, DynamoDB, Kinesis) plus a global overview; French-only prompts.
-- `S3_BUCKET_NAME` and `MODE` are defined but not used by the pipeline yet; `ragas` / `datasets` are listed in `requirements.txt` but not used by the evaluation script.
+- `S3_BUCKET_NAME` and `MODE` are defined but not used by the pipeline yet.
 - FAISS indexes are loaded with `allow_dangerous_deserialization=True` (pickle): only load indexes you built yourself.
 
 ## Next steps
