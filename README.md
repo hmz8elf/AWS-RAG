@@ -160,15 +160,9 @@ python evaluation/evaluate.py
 
 ### Results
 
-TODO: add scores.
+Extended evaluation in progress.
 
-| Metric | Score |
-|---|---|
-| Faithfulness | TODO |
-| Answer relevancy | TODO |
-| Global | TODO |
-
-**Honest note:** the current evaluation set only contains **3 questions**, so these numbers are a sanity check, not a reliable measure of quality. In addition:
+**Honest note:** the current evaluation set only contains **3 questions**, so its scores are only a sanity check, not a reliable measure of quality. In addition:
 
 - the judge is the same model as the generator, which can bias scores upward;
 - to limit token usage, the judge only sees the first 500 characters of the context and the first 300 characters of the answer;
