@@ -49,6 +49,6 @@ jobs:
             docker rm rag-assistant || true
             docker run -d \
               --name rag-assistant \
-              -p 8501:8501 \
+              -p 8000:8000 \
               --env-file /home/ubuntu/.env \
               ${{ steps.login-ecr.outputs.registry }}/rag-aws-assistant:latest

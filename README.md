@@ -140,7 +140,7 @@ With docker-compose (reads `GROQ_API_KEY`, `AWS_REGION`, `S3_BUCKET_NAME` from `
 docker compose up --build
 ```
 
-TODO: `docker-compose.yml` currently publishes port `8501` while the container serves the API on port `8000` (see [Limitations](#limitations-and-known-issues)).
+The API is then available on http://localhost:8000.
 
 ## Evaluation
 
@@ -192,7 +192,6 @@ flowchart LR
 - **Single-service routing**: only the first detected service is used; a question comparing two services in technical mode is searched in one index only.
 - **Limited scope**: five services (S3, EC2, Lambda, DynamoDB, Kinesis) plus a global overview; French-only prompts.
 - **Web interface is incomplete**: `WebInterface` does not implement `processQuestion` nor define `self.pipeline`, so it cannot be instantiated yet.
-- **Port mismatch**: the image serves the API on port 8000, but `docker-compose.yml` and the EC2 deploy step publish port 8501.
 - **Indexes in CI**: the Dockerfile copies `indexes/`, which is git-ignored, so it is not present in the GitHub Actions checkout. TODO: document how the indexes reach the image in CI (e.g. download from S3).
 - `S3_BUCKET_NAME` and `MODE` are defined but not used by the pipeline yet; `ragas` / `datasets` are listed in `requirements.txt` but not used by the evaluation script.
 - FAISS indexes are loaded with `allow_dangerous_deserialization=True` (pickle): only load indexes you built yourself.
@@ -202,7 +201,7 @@ flowchart LR
 - Grow the evaluation set (more questions, every service, both modes) and use the `ground_truth` answers.
 - Expose the retriever as an **MCP server**, so that any MCP-compatible agent can query the AWS documentation indexes.
 - Retrieve from several service indexes when a question involves more than one service.
-- Finish the Streamlit interface and align the published ports.
+- Finish the Streamlit interface.
 
 ## License
 
