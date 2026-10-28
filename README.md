@@ -177,13 +177,28 @@ TODO: add scores.
 `.github/workflows/deploy.yml` runs on every push to `main`:
 
 1. Configure AWS credentials (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` GitHub secrets, region `eu-west-1`).
-2. Log in to **Amazon ECR**.
-3. Build the Docker image and push it to the `rag-aws-assistant` ECR repository, tagged with the commit SHA and `latest`.
-4. SSH into the **EC2** instance (`EC2_HOST`, `EC2_SSH_KEY` secrets), pull `latest`, and restart the `rag-assistant` container with the instance's own `.env` file.
+2. Download the FAISS indexes from **S3** (`s3://<S3_BUCKET_NAME>/indexes`, bucket name stored in the `S3_BUCKET_NAME` GitHub secret).
+3. Log in to **Amazon ECR**.
+4. Build the Docker image and push it to the `rag-aws-assistant` ECR repository, tagged with the commit SHA and `latest`.
+5. SSH into the **EC2** instance (`EC2_HOST`, `EC2_SSH_KEY` secrets), pull `latest`, and restart the `rag-assistant` container with the instance's own `.env` file.
 
 ```mermaid
 flowchart LR
-    A["git push main"] --> B["GitHub Actions"] --> C["docker build"] --> D["Amazon ECR"] --> E["EC2<br/>docker pull + run"]
+    A["git push main"] --> B["GitHub Actions"] --> S["indexes from S3"] --> C["docker build"] --> D["Amazon ECR"] --> E["EC2<br/>docker pull + run"]
+```
+
+### Why the indexes come from S3
+
+`indexes/` and `data/` are git-ignored (binary files, ~86 MB and ~144 MB), so they are not in the GitHub Actions checkout, while the Dockerfile needs `indexes/` to build the image. The workflow therefore downloads the prebuilt indexes from S3 right before `docker build`:
+
+- the CI job already has AWS credentials and the AWS CLI, so no application code changes;
+- the image stays self-contained: the container starts fast and needs no AWS credentials at runtime;
+- building the indexes at container startup was ruled out: the source PDFs are not in the image either, and computing the embeddings on every start would be slow.
+
+After rebuilding the indexes locally, upload them once:
+
+```bash
+aws s3 sync indexes/ s3://<your-bucket>/indexes/
 ```
 
 ## Limitations and known issues
@@ -192,7 +207,6 @@ flowchart LR
 - **Single-service routing**: only the first detected service is used; a question comparing two services in technical mode is searched in one index only.
 - **Limited scope**: five services (S3, EC2, Lambda, DynamoDB, Kinesis) plus a global overview; French-only prompts.
 - **Web interface is incomplete**: `WebInterface` does not implement `processQuestion` nor define `self.pipeline`, so it cannot be instantiated yet.
-- **Indexes in CI**: the Dockerfile copies `indexes/`, which is git-ignored, so it is not present in the GitHub Actions checkout. TODO: document how the indexes reach the image in CI (e.g. download from S3).
 - `S3_BUCKET_NAME` and `MODE` are defined but not used by the pipeline yet; `ragas` / `datasets` are listed in `requirements.txt` but not used by the evaluation script.
 - FAISS indexes are loaded with `allow_dangerous_deserialization=True` (pickle): only load indexes you built yourself.
 

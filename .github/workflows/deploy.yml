@@ -19,6 +19,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-west-1
 
+      - name: Download FAISS indexes from S3
+        run: |
+          aws s3 sync s3://${{ secrets.S3_BUCKET_NAME }}/indexes ./indexes
+          test -f indexes/global/index.faiss
+
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
