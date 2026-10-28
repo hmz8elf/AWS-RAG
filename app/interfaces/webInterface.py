@@ -1,7 +1,31 @@
+import os
+import requests
 import streamlit as st
 from app.interfaces.appInterface import AppInterface
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class WebInterface(AppInterface):
+
+    def __init__(self):
+        self.ec2_url = os.getenv("EC2_URL", "http://localhost:8000")
+
+    def processQuestion(self, question: str) -> str:
+        """Envoie la question à l'API FastAPI sur EC2."""
+        try:
+            response = requests.post(
+                f"{self.ec2_url}/ask",
+                json={"question": question},
+                timeout=30
+            )
+            return response.json()["answer"]
+        except requests.exceptions.ConnectionError:
+            return "Erreur : impossible de contacter le serveur EC2. Vérifiez EC2_URL dans .env"
+        except requests.exceptions.Timeout:
+            return "Erreur : le serveur EC2 ne répond pas (timeout 30s)"
+        except Exception as e:
+            return f"Erreur : {str(e)}"
 
     def start(self):
         st.set_page_config(
@@ -11,10 +35,6 @@ class WebInterface(AppInterface):
         )
         st.title("☁️ AWS RAG Assistant")
         st.caption("Posez vos questions sur les services AWS")
-
-        if "pipeline" not in st.session_state:
-            with st.spinner("Chargement du modèle..."):
-                st.session_state.pipeline = self.pipeline
 
         if "messages" not in st.session_state:
             st.session_state.messages = []

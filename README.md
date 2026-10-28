@@ -2,7 +2,7 @@
 
 A Retrieval-Augmented Generation (RAG) assistant that answers questions about AWS services from the official AWS documentation (PDFs).
 Each question is first classified (general "discovery" question vs. precise "technical" question, and which AWS service it targets), then routed to the matching FAISS index before an LLM (Llama 3.3 70B served by Groq) generates the answer.
-The assistant is exposed through a FastAPI backend, a terminal CLI and a Streamlit web interface (work in progress), and is deployed on AWS EC2 through a GitHub Actions CI/CD pipeline.
+The assistant is exposed through a FastAPI backend, a terminal CLI and a Streamlit web interface, and is deployed on AWS EC2 through a GitHub Actions CI/CD pipeline.
 
 > Note: the prompts (classification, generation, evaluation) are currently written in French, so the assistant answers in French.
 
@@ -12,7 +12,7 @@ The assistant is exposed through a FastAPI backend, a terminal CLI and a Streaml
 flowchart LR
     subgraph Interfaces
         CLI["CLI<br/>(rich + prompt_toolkit)"]
-        WEB["Web UI<br/>(Streamlit, WIP)"]
+        WEB["Web UI<br/>(Streamlit)"]
         API["FastAPI<br/>POST /ask"]
     end
 
@@ -29,7 +29,7 @@ flowchart LR
     LLM["Groq<br/>Llama 3.3 70B"]
 
     CLI -- "HTTP (EC2_URL)" --> API
-    WEB -.-> Pipeline
+    WEB -- "HTTP (EC2_URL)" --> API
     API --> Pipeline
     R --> F
     C --> LLM
@@ -64,7 +64,7 @@ All parameters live in `config/settings.py`.
 - **Factory pattern — `IndexFactory`.** `IndexFactory.create(service)` hides how a service name maps to an index on disk (unknown services fall back to the global index). The pipeline only asks for "the index of service X".
 - **Singleton pattern — `IndexSingleton`.** The embedding model is loaded once, and every loaded FAISS index is cached by path, so repeated questions do not reload models or indexes from disk.
 - **Step-based pipeline.** Every step implements the abstract `BaseStep.execute(context) -> context` and reads/writes a shared context dict. `RAGPipeline` simply runs the list of steps, so a step can be added, replaced or tested on its own.
-- **Interchangeable interfaces.** CLI and web interfaces implement the same abstract `AppInterface` (`start`, `getInput`, `displayResponse`, `processQuestion`).
+- **Interchangeable interfaces.** CLI and web interfaces implement the same abstract `AppInterface` (`start`, `getInput`, `displayResponse`, `processQuestion`). Both are thin HTTP clients of the FastAPI backend: they send the question to `POST /ask` and display the answer, so the LLM and the indexes only run in the backend.
 
 ## Project structure
 
@@ -115,6 +115,9 @@ uvicorn api:app --port 8000
 
 # 2. In another terminal, start the CLI (talks to EC2_URL, default http://localhost:8000)
 python main.py
+
+# ...or the web interface (same backend), on http://localhost:8501
+streamlit run main.py
 ```
 
 Or query the API directly:
@@ -206,7 +209,6 @@ aws s3 sync indexes/ s3://<your-bucket>/indexes/
 - **Small evaluation set** (3 questions), with the biases listed above.
 - **Single-service routing**: only the first detected service is used; a question comparing two services in technical mode is searched in one index only.
 - **Limited scope**: five services (S3, EC2, Lambda, DynamoDB, Kinesis) plus a global overview; French-only prompts.
-- **Web interface is incomplete**: `WebInterface` does not implement `processQuestion` nor define `self.pipeline`, so it cannot be instantiated yet.
 - `S3_BUCKET_NAME` and `MODE` are defined but not used by the pipeline yet; `ragas` / `datasets` are listed in `requirements.txt` but not used by the evaluation script.
 - FAISS indexes are loaded with `allow_dangerous_deserialization=True` (pickle): only load indexes you built yourself.
 
@@ -215,7 +217,6 @@ aws s3 sync indexes/ s3://<your-bucket>/indexes/
 - Grow the evaluation set (more questions, every service, both modes) and use the `ground_truth` answers.
 - Expose the retriever as an **MCP server**, so that any MCP-compatible agent can query the AWS documentation indexes.
 - Retrieve from several service indexes when a question involves more than one service.
-- Finish the Streamlit interface.
 
 ## License
 
