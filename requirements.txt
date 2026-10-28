@@ -8,6 +8,11 @@ faiss-cpu==1.9.0.post1
 sentence-transformers==3.0.0
 pypdf==4.2.0
 
+# API (imported by api.py; also installed separately in the Dockerfile)
+fastapi
+uvicorn
+requests
+
 # Interface
 streamlit==1.35.0
 rich==13.7.0

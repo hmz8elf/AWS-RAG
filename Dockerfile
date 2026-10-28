@@ -2,33 +2,27 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Dépendances système
-RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
+RUN apt-get update && apt-get install -y gcc g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Torch CPU avant tout
 RUN pip install torch==2.5.1+cpu \
     --extra-index-url https://download.pytorch.org/whl/cpu \
     --no-cache-dir
 
-# Dépendances Python
+RUN pip install fastapi uvicorn --no-cache-dir
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Code source
-COPY app/ ./app/
+COPY app/index/ ./app/index/
+COPY app/pipeline/ ./app/pipeline/
+COPY app/__init__.py ./app/
 COPY config/ ./config/
-COPY evaluation/ ./evaluation/
 COPY indexes/ ./indexes/
-COPY main.py .
+COPY api.py .
 
-# Variables d'environnement
 ENV PYTHONPATH=/app
 
-EXPOSE 8501
+EXPOSE 8000
 
-CMD ["streamlit", "run", "main.py", \
-     "--server.port=8501", \
-     "--server.address=0.0.0.0"]
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]

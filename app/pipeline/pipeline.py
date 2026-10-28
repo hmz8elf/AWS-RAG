@@ -1,3 +1,10 @@
+"""RAG pipeline orchestrator.
+
+Runs the steps in order on a shared context dict:
+    ClassifierStep -> RetrieverStep -> GeneratorStep
+(intent + service detection, FAISS retrieval, LLM answer generation)
+and returns the generated answer.
+"""
 from app.pipeline.classifierStep import ClassifierStep
 from app.pipeline.retrieverStep import RetrieverStep
 from app.pipeline.generatorStep import GeneratorStep

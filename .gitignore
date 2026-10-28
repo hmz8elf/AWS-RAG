@@ -8,3 +8,9 @@ venv/
 .cli_history
 *.faiss
 *.pkl
+
+# AWS CLI installer (not part of the project)
+aws/
+awscliv2.zip
+aws/
+awscliv2.zip
