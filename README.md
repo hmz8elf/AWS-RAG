@@ -1,8 +1,10 @@
 # AWS Documentation RAG Assistant
 
+[![CI](https://github.com/hmz8elf/AWS-RAG/actions/workflows/ci.yml/badge.svg)](https://github.com/hmz8elf/AWS-RAG/actions/workflows/ci.yml)
+
 A Retrieval-Augmented Generation (RAG) assistant that answers questions about AWS services from the official AWS documentation (PDFs).
 Each question is first classified (general "discovery" question vs. precise "technical" question, and which AWS service it targets), then routed to the matching FAISS index before an LLM (Llama 3.3 70B served by Groq) generates the answer.
-The assistant is exposed through a FastAPI backend, a terminal CLI and a Streamlit web interface, and is deployed on AWS EC2 through a GitHub Actions CI/CD pipeline.
+The assistant is exposed through a FastAPI backend, a terminal CLI and a Streamlit web interface, and was deployed on AWS (EC2, ECR) through GitHub Actions during development (see [Deployment](#deployment)).
 
 > Note: the prompts (classification, generation, evaluation) are currently written in French, so the assistant answers in French.
 
@@ -81,7 +83,9 @@ All parameters live in `config/settings.py`.
 ├── evaluation/             # LLM-as-judge evaluation script + dataset
 ├── Dockerfile              # Image serving the FastAPI backend
 ├── docker-compose.yml
-└── .github/workflows/deploy.yml   # CI/CD: build → ECR → EC2
+└── .github/workflows/
+    ├── ci.yml              # CI: install + import checks (+ tests), no AWS
+    └── deploy.yml          # Manual deploy: build → ECR → EC2 (kept as reference)
 ```
 
 `data/` (PDFs) and `indexes/` (FAISS files) are not versioned.
@@ -104,10 +108,21 @@ pip install -r requirements.txt
 
 cp .env.example .env        # then set GROQ_API_KEY
 
-python -m app.indexer       # builds indexes/ from data/
 ```
 
-### Run
+### Build the indexes
+
+Place the PDFs as described in [Indexing](#indexing) (`data/global/aws-overview.pdf`, `data/services/<service>.pdf`), then, from the repository root:
+
+```bash
+python -m app.indexer
+```
+
+This writes `indexes/global/` and `indexes/services/<service>_index/` (`index.faiss` + `index.pkl` each). A missing PDF is skipped with a message. The first run downloads the embedding model from Hugging Face; no Groq key is needed for this step.
+
+### Run locally
+
+The backend needs `GROQ_API_KEY` (in `.env`) and the indexes built above.
 
 ```bash
 # 1. Start the backend
@@ -130,14 +145,15 @@ curl -X POST http://localhost:8000/ask \
 
 ### Docker
 
-The image only contains the backend (FastAPI on port 8000). The indexes are copied into the image at build time, so build them locally first.
+The image only contains the backend (FastAPI on port 8000). The indexes are copied into the image at build time (`COPY indexes/`), so `indexes/` must exist before `docker build`: run `python -m app.indexer` first.
 
 ```bash
 docker build -t rag-aws-assistant .
 docker run -p 8000:8000 --env-file .env rag-aws-assistant
+curl http://localhost:8000/health
 ```
 
-With docker-compose (reads `GROQ_API_KEY`, `AWS_REGION`, `S3_BUCKET_NAME` from `.env`):
+With docker-compose (reads `GROQ_API_KEY` from `.env`, and mounts the local `indexes/` into the container):
 
 ```bash
 docker compose up --build
@@ -169,9 +185,21 @@ Extended evaluation in progress.
 - if the judge's reply cannot be parsed as a number, the score defaults to 0.5;
 - the `ground_truth` answers in the dataset are not used by the metrics yet.
 
-## CI/CD
+## CI
 
-`.github/workflows/deploy.yml` runs on every push to `main`:
+`.github/workflows/ci.yml` runs on every push and pull request, without AWS, secrets or indexes:
+
+1. Install the dependencies (CPU-only PyTorch, then `requirements.txt`) on Python 3.11.
+2. Check that every module imports (`config`, `app.*`, `api`, `main`, `evaluation.evaluate`).
+3. Run `pytest` if a `tests/` directory exists.
+
+`GROQ_API_KEY` is set to a dummy value, since `api.py` instantiates the Groq client on import; no request is sent to Groq.
+
+## Deployment
+
+Deployed on AWS (EC2, ECR) via GitHub Actions during development, on a free-tier account that has since expired. The deploy workflow is kept as reference and can be run manually.
+
+`.github/workflows/deploy.yml` (trigger: `workflow_dispatch`, from the Actions tab) does:
 
 1. Configure AWS credentials (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` GitHub secrets, region `eu-west-1`).
 2. Download the FAISS indexes from **S3** (`s3://<S3_BUCKET_NAME>/indexes`, bucket name stored in the `S3_BUCKET_NAME` GitHub secret).
@@ -179,9 +207,11 @@ Extended evaluation in progress.
 4. Build the Docker image and push it to the `rag-aws-assistant` ECR repository, tagged with the commit SHA and `latest`.
 5. SSH into the **EC2** instance (`EC2_HOST`, `EC2_SSH_KEY` secrets), pull `latest`, and restart the `rag-assistant` container with the instance's own `.env` file.
 
+Running it again requires a new AWS account with these resources and secrets.
+
 ```mermaid
 flowchart LR
-    A["git push main"] --> B["GitHub Actions"] --> S["indexes from S3"] --> C["docker build"] --> D["Amazon ECR"] --> E["EC2<br/>docker pull + run"]
+    A["manual run"] --> B["GitHub Actions"] --> S["indexes from S3"] --> C["docker build"] --> D["Amazon ECR"] --> E["EC2<br/>docker pull + run"]
 ```
 
 ### Why the indexes come from S3
