@@ -1,8 +1,9 @@
 name: Build and Deploy
 
+# The AWS free-tier account this targeted (EC2, ECR, S3 bucket) has been closed.
+# Kept as reference: manual trigger only, and it needs the AWS secrets to run.
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   deploy:
