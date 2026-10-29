@@ -1,0 +1,44 @@
+name: CI
+
+# Lightweight checks, no AWS: install the dependencies and make sure every
+# module imports. Needs no secrets and no FAISS indexes.
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    env:
+      # Dummy value: ChatGroq is instantiated when api.py is imported,
+      # but no request is ever sent to Groq here.
+      GROQ_API_KEY: ci-dummy-key
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install torch==2.5.1+cpu \
+            --extra-index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt pytest
+
+      - name: Check that the modules import
+        run: |
+          python -c "import config.settings, app.indexer, app.pipeline.pipeline, app.index.indexFactory, app.interfaces.cliInterface, app.interfaces.webInterface, api, main, evaluation.evaluate"
+
+      - name: Run tests
+        run: |
+          if [ -d tests ]; then
+            pytest
+          else
+            echo "No tests/ directory, skipping."
+          fi
